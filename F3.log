@@ -1,0 +1,300 @@
+#include <signal.h>
+#include <unistd.h>
+
+void alarm_handler(int signo) {
+    printf("alarm_handler function\n");
+    alarm(5);
+}
+
+int main()
+{
+    signal(SIGALRM, alarm_handler);
+    alarm(5);
+    for(;;);
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
+
+int main() {
+    int pfd[2];
+
+    pipe(pfd);      // pfd[0] : read pipe fd.
+                    // pfd[1] : write pipe fd
+    printf("%d, %d\n", pfd[0], pfd[1]);
+
+    char buf[] = "hello parent";
+    char buf1[1024] ;
+    int n;
+
+    switch(fork()) {
+        case -1:
+            perror("fork");
+            exit(1);
+            break;
+        case 0:
+            close(pfd[0]);
+            dup2(pfd[1], 1);
+            close(pfd[1]);
+
+            // write(1, buf, strlen(buf));
+            execlp("ps", "ps", NULL);
+            perror("execlp");
+            exit(1);
+            break;
+        default:
+            close(pfd[1]);
+            dup2(pfd[0], 0);
+
+            // n=read(0, buf1, sizeof(buf1));
+            // buf1[n] = '\0';
+            execlp("wc", "wc", NULL);
+
+            // printf("%s\n", buf1);
+            wait(NULL);
+            break;
+    }
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+int main()
+{
+    sigset_t sigmask;
+    sigfillset(&sigmask);
+    sigprocmask(SIG_BLOCK,&sigmask,NULL);
+
+    for(int i=0; i<10; i++) {
+        printf("sigpromask\n");
+        sleep(1);
+    }
+
+    sigprocmask(SIG_UNBLOCK, &sigmask, NULL);
+
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <unistd.h>
+
+void int_handler(int signo) {
+    printf("int_handler\n");
+    count = count+1;
+}
+
+int main() {
+    // signal(SIGINT, SIG_TGN));
+    signal(SIGINT, int_handler);
+    for(;;) {
+        printf("siganl test\n");
+        sleep(1);
+    }
+    return (0);
+}
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <dirent.h>
+int main(int argc, char* argv[])
+{
+    if(argc!=2) {
+        fprintf(stderr, "USage : %s filename\n", argv[0]);
+        exit(1);
+    }
+    struct stat fbuf;
+
+    if(stat(argv[1], &fbuf) == -1) {
+        perror("stat");
+        exit(1);
+    }
+
+    // printf("inode : %d, size :%ld\n", (int)fbuf.st_ino, fbuf.st_size);
+
+    DIR *dp;
+
+    if(S_ISDIR(fbuf.st_mode)) {
+        printf("Directory\n"); // opendir
+        if((dp=opendir(argv[1])) == NULL) {
+            perror("opendir");
+            exit(1);
+        }
+
+        struct dirent* dirp;
+
+        while(1) {
+            dirp = readdir(dp);
+            if(dirp==NULL) {
+                break;
+            }
+            printf("inode : %d, filename : %s",(int) dirp->d_ino, dirp->d_name);
+        }
+        closedir(dp);
+    } else if(S_ISREG(fbuf.st_mode)) {
+        printf("Regular File\n"); // open
+    }
+
+    return (0);
+}
+#include <stdio.h>
+
+int main() {
+    puts("hello");
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+int file_lock(int fd);
+int file_unlock(int fd);
+
+int main() {
+    int fd;
+    int count = 0;
+
+    if((fd=open("rlock.txt", O_CREAT | O_WRONLY, 0644))  == 01) {
+        perror("open");
+        exit(1);
+    }
+
+    char buf[16];
+
+    for(int i=0; i<10; i++) {
+        memset(buf, 0, 16);
+        sprintf(buf, "%d", 0);
+        write(fd, buf,16);
+    }
+    close(fd);
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    close(fd);
+
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+int file_lock(int fd, int offset);
+int file_unlock(int fd, int offset);
+
+int main(int argc, char* argv[])
+{
+    int fd;
+    char buf[16];
+
+    int offset = atoi(argv[1])*16;
+
+
+    if((fd=open("rlock.txt", O_RDWR))==-1){
+        perror("open");
+        exit(1);
+    }
+    // 파일 lock 을 설정, lock을 설정하지 못하는 경우 -1 반환
+    if(file_lock(fd, offset)==-1) {
+        perror("file_lock");
+        exit(1);
+    }
+
+    int n;
+    memset(buf, 0, 16);
+    lseek(fd, offset, SEEK_SET);
+    if((n=read(fd, buf, 16))==-1) {
+        perror("read");
+        exit(1);
+    }
+
+    printf("buf : %s\n", buf);
+
+    lseek(fd, offset, SEEK_SET);
+    sprintf(buf, "%d",atoi(buf)+1);
+    write(fd, buf, 16);
+    sleep(10);
+    if(file_unlock(fd, offset)==-1) {
+        perror("file_unlock");
+        exit(1);
+    }
+    close(fd);
+
+}
+
+int file_lock(int fd, int offset)
+{
+    struct flock lock;
+
+    lock.l_type=F_WRLCK;
+    lock.l_whence=SEEK_SET;
+    lock.l_start=offset;
+    lock.l_len=16;
+    return fcntl(fd, F_SETLKW, &lock);
+}
+
+int file_unlock(int fd, int offset)
+{
+    struct flock lock;
+
+    lock.l_type=F_UNLCK;
+    lock.l_whence=SEEK_SET;
+    lock.l_start=offset;
+    lock.l_len=16;
+    return fcntl(fd, F_SETLK, &lock);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    char buf[1024];
+    int size;

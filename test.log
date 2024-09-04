@@ -1,0 +1,1340 @@
+#include <stdio.h>
+#include <time.h>
+#include <sys/types.h>
+#include <stdlib.h>
+
+int main()
+{
+    time_t* cur_time = (time_t*)malloc(sizeof(time_t));
+
+    time(cur_time);
+    printf("Current Time = %d\n", (int)*cur_time);
+
+    char *cur_string;
+
+    cur_string = ctime(cur_time);
+    printf("Current Time String = %s\n", cur_string);
+
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+int main(void)
+{
+	char *homedir, filename[80];
+	FILE *fp;
+	
+	homedir = getenv("HOME");
+	strcpy(filename, homedir);
+	strcat(filename, "/test.log");
+
+	if((fp=fopen(filename, "w")) == NULL) {
+		perror("fopen");
+		exit(1);
+	}
+
+	fwrite("getenv test\n", 12, 1, fp);
+	fclose(fp);
+	return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main()
+{
+    int fd = 3;
+
+    if(write(fd, "hello", 5) == -1) {
+        perror("write");
+        exit(1);
+    }
+
+    close(fd);
+    return (0);
+}#include <stdio.h>
+#include <time.h>
+#include <sys/types.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    time_t* cur_time = (time_t*)malloc(sizeof(time_t));
+
+    time(cur_time);
+    printf("Current Time = %d\n", (int) *cur_time);
+
+    return 0;
+}       #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main()
+{
+    int fd;
+    fd = open("mypipe", O_RDONLY);
+    if(fd == -1){
+        perror("open");
+        exit(1);
+    }
+    char buf[512];
+    int n;
+    for(int i=0; i<5; i++) {
+        n = read(fd, buf, sizeof(buf));
+        buf[n]='\0';
+        printf("from send > %s\n", buf);
+    }
+    sleep(1);
+    close(fd);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main()
+{
+    int fd;
+    fd = open("mypipe", O_WRONLY);
+    if(fd == -1){
+        perror("open");
+        exit(1);
+    }
+    char buf[] = "hello pipe";
+    for(int i=0; i<5; i++) {
+        write(fd, buf, strlen(buf));
+    }
+    sleep(3);
+    close(fd);
+}
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/msg.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    int msgid;
+    struct msgbuf {
+        long mtype;
+        char mtext[1014];
+    } mbuf;
+
+    msgid = msgget(ftok("/home/ubuntu", 100), IPC_CREAT | 0666);
+    if(msgid==-1) {
+        perror("msgget");
+        exit(1);
+    }
+
+    if(msgrcv(msgid, &mbuf, sizeof(mbuf), 1, 0)<0) {
+        printf("error\n");
+        exit(1);
+    }
+    sleep(5);
+    msgctl(msgid, IPC_RMID, 0);
+}
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/msg.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    int msgid;
+    struct msgbuf {
+        long mtype;
+        char mtext[1014];
+    } mbuf;
+
+    msgid = msgget(ftok("/home/ubuntu", 100), IPC_CREAT | 0666);
+    if(msgid==-1) {
+        perror("msgget");
+        exit(1);
+    }
+    mbuf.mtype = 1;
+    strcpy(mbuf.mtext, "sender");
+    msgsnd(msgid, &mbuf, sizeof(mbuf),0);
+    // msgctl(msgid, IPC_RMID, 0);
+}
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+
+void cd_func(char** arg);
+
+struct b_cmd{
+    char *cmd;
+    void (*func)(char**);
+} builtin_cmd[] = {
+    {"cd", cd_func},
+    {NULL, NULL}
+};
+
+
+int is_builtin(char** arg)
+{
+    for(int i=0; builtin_cmd[i].cmd!=NULL; i++) {
+        if(strcmp(arg[0], builtin_cmd[i].cmd)==0) {
+            builtin_cmd[i].func(arg);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void cd_func(char** arg)
+{
+    if(chdir(arg[1])==1) {
+        perror("chdir");
+        return;
+    }
+}
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+char** command_parse(char *line) {
+  	int argcount = 0;
+  	char * token;
+  	char **arglist;
+
+  	if (line == NULL) {
+    	return NULL;
+  	}
+
+  	if ((token=strtok(line," \t\n")) == NULL) {
+    	return NULL;
+  	}
+
+  	arglist=(char **)malloc(sizeof(char *));
+
+  	while (token != NULL) {
+    	arglist[argcount++]=strdup(token);
+    	token=strtok(NULL, " \t\n");
+    	arglist=(char **)realloc(arglist, (argcount+1)*sizeof(char *));
+  	}
+
+  	arglist[argcount] = NULL;
+  	return arglist;
+}
+
+
+void command_freelist(char **arglist) {
+
+  int i;
+
+  for (i = 0; arglist[i] != NULL; i++) {
+    free(arglist[i]);
+  }
+  free(arglist);
+}
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <fcntl.h>
+
+int is_background(char** arglist);
+int redirect_out(char** arglist);
+int run_command(char** arglist);
+
+int run_command(char** arglist) {
+    pid_t cpid;
+    int back_flag = 0;
+
+    if (is_background(arglist))
+        back_flag = 1;
+
+    for (int i = 0; arglist[i] != NULL; i++) {
+        if (strcmp(arglist[i], "|") == 0) {
+            arglist[i] = NULL; // 현재 명령어 종료
+            int pipefd[2];
+            if (pipe(pipefd) == -1) {
+                perror("pipe");
+                return -1;
+            }
+
+            pid_t pid2 = fork();
+            if (pid2 == -1) {
+                perror("fork");
+                return -1;
+            } else if (pid2 == 0) { // 첫 번째 명령어 실행
+                close(pipefd[0]);
+                dup2(pipefd[1], STDOUT_FILENO);
+                close(pipefd[1]);
+                execvp(arglist[0], arglist);
+                perror("execvp");
+                exit(1);
+            } else { // 두 번째 명령어 실행
+                close(pipefd[1]);
+                dup2(pipefd[0], STDIN_FILENO);
+                close(pipefd[0]);
+                execvp(arglist[i + 1], &arglist[i + 1]);
+                perror("execvp");
+                exit(1);
+            }
+        } else if (strcmp(arglist[i], ">") == 0) {
+            if (redirect_out(arglist) == -1) {
+                return -1;
+            }
+        }
+    }
+
+    // 기본 명령어 실행
+    cpid = fork();
+    if (cpid == -1) {
+        perror("fork");
+        return -1;
+    }
+
+    if (cpid == 0) { // 자식 프로세스
+        execvp(arglist[0], arglist);
+        perror("execvp");
+        exit(1);
+    } else { // 부모 프로세스
+        if (back_flag == 0) { // 백그라운드 실행이 아닌 경우
+            int status;
+            waitpid(cpid, &status, 0);
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+        return 0;
+    }
+}
+
+int is_background(char** arglist) {
+    int i;
+    for(i = 0; arglist[i] != NULL; i++);
+    if(strcmp(arglist[i-1], "&") == 0) {
+        arglist[i-1] = NULL; // "&" 삭제
+        return 1;
+    }
+    return 0;
+}
+
+int redirect_out(char** arglist) {
+    int i, fd;
+    for(i = 0; arglist[i] != NULL; i++) {
+        if(strcmp(arglist[i], ">") == 0) {
+            fd = open(arglist[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if(fd == -1) {
+                perror("open");
+                return -1;
+            }
+            if (dup2(fd, STDOUT_FILENO) == -1) {
+                perror("dup2");
+                close(fd);
+                return -1;
+            }
+            close(fd);
+            arglist[i] = NULL;
+            return 0;
+        }
+    }
+    return 0;
+}
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include "minishell.h"
+
+#define MAXLINE 255
+
+void int_handler(int signo) {
+    (void)signo;  // 사용하지 않는 매개변수를 무시합니다.
+    while(waitpid(0, NULL, WNOHANG) == 0); // 종료될 때까지 기다림
+}
+
+int main(void) {
+    char line[MAXLINE];
+    char command[MAXLINE * 10];  // 여러 줄 입력을 처리하기 위한 큰 버퍼
+    char **arglist;
+
+    struct sigaction sigact;
+    sigact.sa_handler = int_handler;
+    sigfillset(&sigact.sa_mask);
+    sigact.sa_flags = SA_RESTART;
+    sigaction(SIGCHLD, &sigact, NULL);
+
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+
+    while (1) {
+        // 프롬프트 출력
+        fputs("minishell> ", stdout);
+        fflush(stdout);
+
+        // 명령어 입력 초기화
+        command[0] = '\0';
+
+        // 여러 줄 입력 처리 루프
+        while (fgets(line, MAXLINE, stdin)) {
+            // 엔터만 입력된 경우 루프를 계속 돕니다.
+            // if (strcmp(line, "\n") == 0) {
+            //    continue;
+            // }
+
+            // 종료 명령어 처리
+            if (!strncmp(line, "exit", 4) || !strncmp(line, "quit", 4)) {
+                return 0;
+            }
+
+            // "next >" 가 입력되면 다음 줄로 계속 입력 받음
+            if (strstr(line, "next >") != NULL) {
+                strcat(command, line);  // 입력을 command에 추가
+                fputs("next > ", stdout);
+                fflush(stdout);
+            } else {
+                strcat(command, line);  // 마지막 입력을 추가하고 종료
+                break;
+            }
+        }
+
+        // 명령어 파싱 및 실행
+        arglist = command_parse(command);
+        if (arglist == NULL || arglist[0] == NULL) {
+            fprintf(stderr, "명령어 파싱 실패\n");
+            continue;  // 파싱 실패 시 다시 프롬프트로 돌아갑니다.
+        }
+
+        if (run_command(arglist) == -1) {
+            fprintf(stderr, "잘못된 명령어입니다: %s", command);
+        }
+
+        command_freelist(arglist);
+    }
+
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+int main() {
+    int status;
+
+    if(fork() == 0) { // child process
+        char *arglist[] = { "ls", "ls", "-l", NULL };
+
+        printf("child start\n");
+        // execl("/bin/ls", "ls", "-l", NULL);
+        // execlp("ls", "ls", "-l", NULL);
+        execv(arglist[0], &arglist[1]);
+        printf("child end\n");
+        exit(0);
+    } else {
+        wait(&status);
+        if(WIFEXITED(status)) {
+            printf("exit code : %d\n", WEXITSTATUS(status));
+        } else if(WIFSIGNALED(status)) {
+            printf("killed by signal\n");
+        }
+    }
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <signal.h>
+#include <fcntl.h>
+int main(int argc, char *argv[])
+{
+        int pid;
+         pid = fork();
+        printf("pid = [%d] \n", pid);
+        if(pid < 0){
+                printf("fork Error... : return is [%d] \n", pid );
+                perror("fork error : ");
+                exit(0);
+        }else if (pid > 0){
+                printf("child process : [%d] - parent process : [%d] \n", pid, getpid());
+                exit(0);
+        }else if(pid == 0){
+                printf("process : [%d]\n", getpid());
+        }
+        signal(SIGHUP, SIG_IGN);
+        //close(0);
+        //close(1);
+        //close(2);
+        chdir("/");
+        setsid();
+        open("/dev/null", O_RDWR);
+        int cnt = 0;
+        while(1) {
+                printf("cnt = %d\n", cnt++);
+                sleep(5);
+        }
+}
+#include <stdio.h>
+#include <sys/wait.h>
+#include <spawn.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+extern char **environ;
+
+int my_system(char *cmd) {
+    pid_t pid;
+    int status;
+    pid = fork();
+    printf("pid = [%d]\n", pid);
+    char *argv[] = {"sh", "-c", cmd, NULL};
+
+    if(pid < 0){
+        printf("fork Error...: return is [%d] \n", pid);
+        perror("fork error...");
+        return -1;
+    } else if(pid > 0) {
+        printf("child process : [%d] - parent process : [%d] \n", pid, getpid());
+        exit(0);
+    } else if(pid == 0) {
+        printf("process : [%d]\n", getpid());
+        posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ);
+        waitpid(pid, &status, 0);
+        return status;
+    }
+   //  posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ);
+   //  waitpid(pid, &status, 0);
+  //  return status;
+}
+
+int main(int argc, char**argv, char **envp) {
+    while(*envp)
+        printf("%s\n", *envp++);
+
+    my_system("who");
+    my_system("nocommand");
+    my_system("cal");
+
+    return (0);
+}
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+
+int main()
+{
+    pid_t cpid;
+    int status;
+
+    cpid=fork();
+    switch(cpid) {
+        case -1:
+            perror("fork");
+            exit(1);
+            break;
+        case 0: // chlid process
+            printf("pid : %d, ppid : %d\n", getpid(), getppid());
+            sleep(2);
+            exit(2);
+            break;
+        default:    // process process
+            printf("cpid : %d, pid : %d\n", cpid, getpid());
+            sleep(5);
+
+            while(waitpid(cpid, &status, 0)!=cpid) {
+                printf("parent process\n");
+                sleep(1);
+            }
+
+            if(WIFEXITED(status)) {
+                printf("exit code : %d\n", WEXITSTATUS(status));
+            } else if(WIFSIGNALED(status)) {
+                printf("killed by signal\n");
+            }
+
+            system("ps -l");
+            break;
+    }
+}
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <stdio.h>
+
+int main() {
+    struct rlimit rlim;
+
+    getrlimit(RLIMIT_NPROC, &rlim);
+    printf("max user process : %lu / %lu\n", rlim.rlim_cur, rlim.rlim_max);
+
+    getrlimit(RLIMIT_NOFILE, &rlim);
+    printf("file size : %u, / %lu\n", (int)rlim.rlim_cur, rlim.rlim_max);
+
+    getrlimit(RLIMIT_RSS, &rlim);
+    printf("file memory size : %lu / %lu\n", rlim.rlim_cur, rlim.rlim_max);
+
+    getrlimit(RLIMIT_CPU, &rlim);
+    if(rlim.rlim_cur == RLIM_INFINITY) {
+        printf("cpu time : UNLIMIT\n");
+    }
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+void alarm_handler(int signo) {
+    printf("alarm_handler function\n");
+    alarm(5);
+}
+
+int main()
+{
+    signal(SIGALRM, alarm_handler);
+    alarm(5);
+    for(;;);
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
+
+int main() {
+    int pfd[2];
+
+    pipe(pfd);      // pfd[0] : read pipe fd.
+                    // pfd[1] : write pipe fd
+    printf("%d, %d\n", pfd[0], pfd[1]);
+
+    char buf[] = "hello parent";
+    char buf1[1024] ;
+    int n;
+
+    switch(fork()) {
+        case -1:
+            perror("fork");
+            exit(1);
+            break;
+        case 0:
+            close(pfd[0]);
+            dup2(pfd[1], 1);
+            close(pfd[1]);
+
+            // write(1, buf, strlen(buf));
+            execlp("ps", "ps", NULL);
+            perror("execlp");
+            exit(1);
+            break;
+        default:
+            close(pfd[1]);
+            dup2(pfd[0], 0);
+
+            // n=read(0, buf1, sizeof(buf1));
+            // buf1[n] = '\0';
+            execlp("wc", "wc", NULL);
+
+            // printf("%s\n", buf1);
+            wait(NULL);
+            break;
+    }
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+int main()
+{
+    sigset_t sigmask;
+    sigfillset(&sigmask);
+    sigprocmask(SIG_BLOCK,&sigmask,NULL);
+
+    for(int i=0; i<10; i++) {
+        printf("sigpromask\n");
+        sleep(1);
+    }
+
+    sigprocmask(SIG_UNBLOCK, &sigmask, NULL);
+
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <unistd.h>
+
+void int_handler(int signo) {
+    printf("int_handler\n");
+    count = count+1;
+}
+
+int main() {
+    // signal(SIGINT, SIG_TGN));
+    signal(SIGINT, int_handler);
+    for(;;) {
+        printf("siganl test\n");
+        sleep(1);
+    }
+    return (0);
+}
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <dirent.h>
+int main(int argc, char* argv[])
+{
+    if(argc!=2) {
+        fprintf(stderr, "USage : %s filename\n", argv[0]);
+        exit(1);
+    }
+    struct stat fbuf;
+
+    if(stat(argv[1], &fbuf) == -1) {
+        perror("stat");
+        exit(1);
+    }
+
+    // printf("inode : %d, size :%ld\n", (int)fbuf.st_ino, fbuf.st_size);
+
+    DIR *dp;
+
+    if(S_ISDIR(fbuf.st_mode)) {
+        printf("Directory\n"); // opendir
+        if((dp=opendir(argv[1])) == NULL) {
+            perror("opendir");
+            exit(1);
+        }
+
+        struct dirent* dirp;
+
+        while(1) {
+            dirp = readdir(dp);
+            if(dirp==NULL) {
+                break;
+            }
+            printf("inode : %d, filename : %s",(int) dirp->d_ino, dirp->d_name);
+        }
+        closedir(dp);
+    } else if(S_ISREG(fbuf.st_mode)) {
+        printf("Regular File\n"); // open
+    }
+
+    return (0);
+}
+#include <stdio.h>
+
+int main() {
+    puts("hello");
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+int file_lock(int fd);
+int file_unlock(int fd);
+
+int main() {
+    int fd;
+    int count = 0;
+
+    if((fd=open("rlock.txt", O_CREAT | O_WRONLY, 0644))  == 01) {
+        perror("open");
+        exit(1);
+    }
+
+    char buf[16];
+
+    for(int i=0; i<10; i++) {
+        memset(buf, 0, 16);
+        sprintf(buf, "%d", 0);
+        write(fd, buf,16);
+    }
+    close(fd);
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    close(fd);
+
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+int file_lock(int fd, int offset);
+int file_unlock(int fd, int offset);
+
+int main(int argc, char* argv[])
+{
+    int fd;
+    char buf[16];
+
+    int offset = atoi(argv[1])*16;
+
+
+    if((fd=open("rlock.txt", O_RDWR))==-1){
+        perror("open");
+        exit(1);
+    }
+    // 파일 lock 을 설정, lock을 설정하지 못하는 경우 -1 반환
+    if(file_lock(fd, offset)==-1) {
+        perror("file_lock");
+        exit(1);
+    }
+
+    int n;
+    memset(buf, 0, 16);
+    lseek(fd, offset, SEEK_SET);
+    if((n=read(fd, buf, 16))==-1) {
+        perror("read");
+        exit(1);
+    }
+
+    printf("buf : %s\n", buf);
+
+    lseek(fd, offset, SEEK_SET);
+    sprintf(buf, "%d",atoi(buf)+1);
+    write(fd, buf, 16);
+    sleep(10);
+    if(file_unlock(fd, offset)==-1) {
+        perror("file_unlock");
+        exit(1);
+    }
+    close(fd);
+
+}
+
+int file_lock(int fd, int offset)
+{
+    struct flock lock;
+
+    lock.l_type=F_WRLCK;
+    lock.l_whence=SEEK_SET;
+    lock.l_start=offset;
+    lock.l_len=16;
+    return fcntl(fd, F_SETLKW, &lock);
+}
+
+int file_unlock(int fd, int offset)
+{
+    struct flock lock;
+
+    lock.l_type=F_UNLCK;
+    lock.l_whence=SEEK_SET;
+    lock.l_start=offset;
+    lock.l_len=16;
+    return fcntl(fd, F_SETLK, &lock);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    char buf[1024];
+    int size;
+
+    if((size=read(fd, buf, 1023)) == -1) {
+        perror("read");
+        exit(1);
+    }
+    buf[size]='\0';
+    printf("buf : %s\n", buf);
+
+    close(fd);
+
+    return (0);
+}
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int main(int argc, char* argv[])
+{
+    if(argc!=2) {
+        fprintf(stderr, "USage : %s filename\n", argv[0]);
+        exit(1);
+    }
+    struct stat fbuf;
+
+    if(stat(argv[1], &fbuf) == -1) {
+        perror("stat");
+        exit(1);
+    }
+
+    printf("inode : %d, size :%ld\n", (int)fbuf.st_ino, fbuf.st_size);
+
+    if(S_ISDIR(fbuf.st_mode)) {
+        printf("Directory\n"); // opendir
+    } else if(S_ISREG(fbuf.st_mode)) {
+        printf("Regular File\n"); // open
+    }
+
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include <time.h>
+
+int main()
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    printf("tv_sec : %d, tv_userc : %ld\n", (int) tv.tv_sec, tv.tv_usec);
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    printf("tv_sec : %d, tv_nes : %ld\n", (int) ts.tv_sec, ts.tv_nsec);
+
+    time_t rawtime;
+    time(&rawtime);
+    printf("current time : %u\n", (unsigned)rawtime);
+
+    struct timeval mytime;
+    gettimeofday(&mytime, NULL);
+    printf("gettimeofday : %ld/%ld\n", mytime.tv_sec, mytime.tv_usec);
+
+    printf("current time : %s", ctime(&rawtime));
+
+    putenv("TZ=PST3PDT");
+    tzset();
+    struct tm *tm;
+    tm = localtime(&rawtime);
+    printf("asctime : %s", asctime(tm));
+
+    char buf[BUFSIZ];
+    strftime(buf, sizeof(buf), "%a %b %e %H:%M:%S %Y", tm);
+    printf("strftime : %s\n", buf);
+
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
+int file_lock(int fd, int offset);
+int file_unlock(int fd, int offset);
+
+int main(int argc, char* argv[])
+{
+    int fd;
+    char buf[16];
+
+    int offset = atoi(argv[1])*16;
+
+
+    if((fd=open("rlock.txt", O_RDWR))==-1){
+        perror("open");
+        exit(1);
+    }
+    // 파일 lock 을 설정, lock을 설정하지 못하는 경우 -1 반환
+    if(file_lock(fd, offset)==-1) {
+        perror("file_lock");
+        exit(1);
+    }
+
+    int n;
+    memset(buf, 0, 16);
+    lseek(fd, offset, SEEK_SET);
+    if((n=read(fd, buf, 16))==-1) {
+        perror("read");
+        exit(1);
+    }
+
+    printf("buf : %s\n", buf);
+
+    lseek(fd, offset, SEEK_SET);
+    sprintf(buf, "%d",atoi(buf)+1);
+    write(fd, buf, 16);
+    sleep(10);
+    if(file_unlock(fd, offset)==-1) {
+        perror("file_unlock");
+        exit(1);
+    }
+    close(fd);
+
+}
+
+int file_lock(int fd, int offset)
+{
+    struct flock lock;
+
+    lock.l_type=F_WRLCK;
+    lock.l_whence=SEEK_SET;
+    lock.l_start=offset;
+    lock.l_len=16;
+    return fcntl(fd, F_SETLKW, &lock);
+}
+
+int file_unlock(int fd, int offset)
+{
+    struct flock lock;
+
+    lock.l_type=F_UNLCK;
+    lock.l_whence=SEEK_SET;
+    lock.l_start=offset;
+    lock.l_len=16;
+    return fcntl(fd, F_SETLK, &lock);
+}
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main()
+{
+    // 원본 파일이 존재하는지 확인
+    if (access("flock.txt", F_OK) == -1) {
+        perror("flock.txt does not exist");
+        exit(1);
+    }
+
+    // 하드 링크 생성
+    if (link("flock.txt", "hlink.txt") == -1) {
+        perror("link");
+        exit(1);
+    }
+
+    // 파일 목록 출력
+    system("ls -l flock.txt hlink.txt");
+
+    // 심볼릭 링크 생성
+    if (symlink("flock.txt", "slink.txt") == -1) {
+        perror("symlink");
+        exit(1);
+    }
+
+    // 모든 파일 목록 출력
+    system("ls -al flock.txt hlink.txt slink.txt");
+
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    char buf[1024];
+    int size;
+
+    if((size=read(fd, buf, 1023)) == -1) {
+        perror("read");
+        exit(1);
+    }
+
+    buf[size]='\0';
+
+    int ofd;
+
+    if((ofd=open("test.c", O_WRONLY|O_CREAT|O_TRUNC, 0777)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    write(ofd, buf, size);
+
+    close(fd);
+    close(ofd);
+
+    return (0);
+}
+#include <stdio.h>
+
+int main() {
+    puts("hello");
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int file_open(int fd char* argv[]) {
+
+    if(argc > 2) {
+        fprintf(stderr, "USage : %s <file>\n", argv[0]);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("file is not open");
+        exit(1);
+    }
+
+    return
+
+}
+
+int main(int argc, char* argv[]) {
+    int fd;
+
+    return (0);
+}
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+int main()
+{
+    printf("Hello dup\n");
+
+    int fd;
+    fd=open("dup.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if(fd == -1) {
+        perror("open");
+        exit(1);
+    }
+    // close(1);
+    //dup(fd);
+
+    dup2(fd, 1);
+    printf("Hello dup2\n");
+
+    return (0);
+}
+#include <stdio.h>
+
+int main() {
+    puts("hello");
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    close(fd);
+
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    char buf[1024];
+    int size;
+
+    if((size=read(fd, buf, 1023)) == -1) {
+        perror("read");
+        exit(1);
+    }
+    buf[size]='\0';
+    printf("buf : %s\n", buf);
+
+    close(fd);
+
+    return (0);
+}
+#include <stdio.h>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <stdlib.h>
+
+int main()
+{
+    char ch;
+    struct termios buf, old_buf;
+
+    if(ioctl(0, TCGETS, &buf) == -1) {
+        perror("ioctl");
+        exit(1);
+    }
+
+    old_buf = buf;  // Save current settings
+
+    buf.c_lflag &= ~ICANON; // disable canonical mode and echoing
+    buf.c_lflag &= ~ECHO;
+    buf.c_cc[VMIN] = 1;  // Set min input chars
+    buf.c_cc[VTIME] = 0; // Immediate return on input
+
+    if(ioctl(0, TCSETS, &buf) == -1) {
+        perror("ioctl");
+        exit(1);
+    }
+
+    while(1) {
+        ch = getchar();
+//        if(ch == 'q') {
+        if(ch == '\n' || ch == '\r') {
+            break;
+        }
+        printf("%x ", ch);  // Print character in hexadecimal
+    }
+
+    if(ioctl(0, TCSETS, &old_buf) == -1) {
+        perror("ioctl");
+        exit(1);
+    }
+
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    char buf[1024];
+    int size;
+
+    if((size=read(fd, buf, 1023)) == -1) {
+        perror("read");
+        exit(1);
+    }
+
+    buf[size]='\0';
+
+    int ofd;
+
+    if((ofd=open("test.c", O_WRONLY|O_CREAT|O_TRUNC, 0777)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    write(ofd, buf, size);
+
+    close(fd);
+    close(ofd);
+
+    return (0);
+}
+#include <stdio.h>
+
+int main() {
+    puts("hello");
+    return (0);
+}

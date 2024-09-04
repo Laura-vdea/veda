@@ -1,0 +1,140 @@
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    close(fd);
+
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    char buf[1024];
+    int size;
+
+    if((size=read(fd, buf, 1023)) == -1) {
+        perror("read");
+        exit(1);
+    }
+    buf[size]='\0';
+    printf("buf : %s\n", buf);
+
+    close(fd);
+
+    return (0);
+}
+#include <stdio.h>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <stdlib.h>
+
+int main()
+{
+    char ch;
+    struct termios buf, old_buf;
+
+    if(ioctl(0, TCGETS, &buf) == -1) {
+        perror("ioctl");
+        exit(1);
+    }
+
+    old_buf = buf;  // Save current settings
+
+    buf.c_lflag &= ~ICANON; // disable canonical mode and echoing
+    buf.c_lflag &= ~ECHO;
+    buf.c_cc[VMIN] = 1;  // Set min input chars
+    buf.c_cc[VTIME] = 0; // Immediate return on input
+
+    if(ioctl(0, TCSETS, &buf) == -1) {
+        perror("ioctl");
+        exit(1);
+    }
+
+    while(1) {
+        ch = getchar();
+//        if(ch == 'q') {
+        if(ch == '\n' || ch == '\r') {
+            break;
+        }
+        printf("%x ", ch);  // Print character in hexadecimal
+    }
+
+    if(ioctl(0, TCSETS, &old_buf) == -1) {
+        perror("ioctl");
+        exit(1);
+    }
+
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[])
+{
+    int fd;
+
+    if(argc!=2) {
+        fprintf(stderr, "Usage: %s filename\n", argv[0]);
+        exit(1);
+    }
+
+    if((fd=open(argv[1], O_RDONLY)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    printf("fd :  %d\n", fd);
+
+    char buf[1024];
+    int size;
+
+    if((size=read(fd, buf, 1023)) == -1) {
+        perror("read");
+        exit(1);
+    }
+
+    buf[size]='\0';
+
+    int ofd;
+
+    if((ofd=open("test.c", O_WRONLY|O_CREAT|O_TRUNC, 0777)) == -1) {
+        perror("open");
+        exit(1);
+    }
+
+    write(ofd, buf, size);
+
+    close(fd);
+    close(ofd);
+
+    return (0);
+}
+#include <stdio.h>
+
+int main() {
+    puts("hello");
+    return (0);
+}

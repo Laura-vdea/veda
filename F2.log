@@ -1,0 +1,300 @@
+        execvp(arglist[0], arglist);
+        perror("execvp");
+        exit(1);
+    } else { // 부모 프로세스
+        if (back_flag == 0) { // 백그라운드 실행이 아닌 경우
+            int status;
+            waitpid(cpid, &status, 0);
+            if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+        return 0;
+    }
+}
+
+int is_background(char** arglist) {
+    int i;
+    for(i = 0; arglist[i] != NULL; i++);
+    if(strcmp(arglist[i-1], "&") == 0) {
+        arglist[i-1] = NULL; // "&" 삭제
+        return 1;
+    }
+    return 0;
+}
+
+int redirect_out(char** arglist) {
+    int i, fd;
+    for(i = 0; arglist[i] != NULL; i++) {
+        if(strcmp(arglist[i], ">") == 0) {
+            fd = open(arglist[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if(fd == -1) {
+                perror("open");
+                return -1;
+            }
+            if (dup2(fd, STDOUT_FILENO) == -1) {
+                perror("dup2");
+                close(fd);
+                return -1;
+            }
+            close(fd);
+            arglist[i] = NULL;
+            return 0;
+        }
+    }
+    return 0;
+}
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include "minishell.h"
+
+#define MAXLINE 255
+
+void int_handler(int signo) {
+    (void)signo;  // 사용하지 않는 매개변수를 무시합니다.
+    while(waitpid(0, NULL, WNOHANG) == 0); // 종료될 때까지 기다림
+}
+
+int main(void) {
+    char line[MAXLINE];
+    char command[MAXLINE * 10];  // 여러 줄 입력을 처리하기 위한 큰 버퍼
+    char **arglist;
+
+    struct sigaction sigact;
+    sigact.sa_handler = int_handler;
+    sigfillset(&sigact.sa_mask);
+    sigact.sa_flags = SA_RESTART;
+    sigaction(SIGCHLD, &sigact, NULL);
+
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+
+    while (1) {
+        // 프롬프트 출력
+        fputs("minishell> ", stdout);
+        fflush(stdout);
+
+        // 명령어 입력 초기화
+        command[0] = '\0';
+
+        // 여러 줄 입력 처리 루프
+        while (fgets(line, MAXLINE, stdin)) {
+            // 엔터만 입력된 경우 루프를 계속 돕니다.
+            // if (strcmp(line, "\n") == 0) {
+            //    continue;
+            // }
+
+            // 종료 명령어 처리
+            if (!strncmp(line, "exit", 4) || !strncmp(line, "quit", 4)) {
+                return 0;
+            }
+
+            // "next >" 가 입력되면 다음 줄로 계속 입력 받음
+            if (strstr(line, "next >") != NULL) {
+                strcat(command, line);  // 입력을 command에 추가
+                fputs("next > ", stdout);
+                fflush(stdout);
+            } else {
+                strcat(command, line);  // 마지막 입력을 추가하고 종료
+                break;
+            }
+        }
+
+        // 명령어 파싱 및 실행
+        arglist = command_parse(command);
+        if (arglist == NULL || arglist[0] == NULL) {
+            fprintf(stderr, "명령어 파싱 실패\n");
+            continue;  // 파싱 실패 시 다시 프롬프트로 돌아갑니다.
+        }
+
+        if (run_command(arglist) == -1) {
+            fprintf(stderr, "잘못된 명령어입니다: %s", command);
+        }
+
+        command_freelist(arglist);
+    }
+
+    return 0;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+int main() {
+    int status;
+
+    if(fork() == 0) { // child process
+        char *arglist[] = { "ls", "ls", "-l", NULL };
+
+        printf("child start\n");
+        // execl("/bin/ls", "ls", "-l", NULL);
+        // execlp("ls", "ls", "-l", NULL);
+        execv(arglist[0], &arglist[1]);
+        printf("child end\n");
+        exit(0);
+    } else {
+        wait(&status);
+        if(WIFEXITED(status)) {
+            printf("exit code : %d\n", WEXITSTATUS(status));
+        } else if(WIFSIGNALED(status)) {
+            printf("killed by signal\n");
+        }
+    }
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <signal.h>
+#include <fcntl.h>
+int main(int argc, char *argv[])
+{
+        int pid;
+         pid = fork();
+        printf("pid = [%d] \n", pid);
+        if(pid < 0){
+                printf("fork Error... : return is [%d] \n", pid );
+                perror("fork error : ");
+                exit(0);
+        }else if (pid > 0){
+                printf("child process : [%d] - parent process : [%d] \n", pid, getpid());
+                exit(0);
+        }else if(pid == 0){
+                printf("process : [%d]\n", getpid());
+        }
+        signal(SIGHUP, SIG_IGN);
+        //close(0);
+        //close(1);
+        //close(2);
+        chdir("/");
+        setsid();
+        open("/dev/null", O_RDWR);
+        int cnt = 0;
+        while(1) {
+                printf("cnt = %d\n", cnt++);
+                sleep(5);
+        }
+}
+#include <stdio.h>
+#include <sys/wait.h>
+#include <spawn.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+extern char **environ;
+
+int my_system(char *cmd) {
+    pid_t pid;
+    int status;
+    pid = fork();
+    printf("pid = [%d]\n", pid);
+    char *argv[] = {"sh", "-c", cmd, NULL};
+
+    if(pid < 0){
+        printf("fork Error...: return is [%d] \n", pid);
+        perror("fork error...");
+        return -1;
+    } else if(pid > 0) {
+        printf("child process : [%d] - parent process : [%d] \n", pid, getpid());
+        exit(0);
+    } else if(pid == 0) {
+        printf("process : [%d]\n", getpid());
+        posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ);
+        waitpid(pid, &status, 0);
+        return status;
+    }
+   //  posix_spawn(&pid, "/bin/sh", NULL, NULL, argv, environ);
+   //  waitpid(pid, &status, 0);
+  //  return status;
+}
+
+int main(int argc, char**argv, char **envp) {
+    while(*envp)
+        printf("%s\n", *envp++);
+
+    my_system("who");
+    my_system("nocommand");
+    my_system("cal");
+
+    return (0);
+}
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+
+int main()
+{
+    pid_t cpid;
+    int status;
+
+    cpid=fork();
+    switch(cpid) {
+        case -1:
+            perror("fork");
+            exit(1);
+            break;
+        case 0: // chlid process
+            printf("pid : %d, ppid : %d\n", getpid(), getppid());
+            sleep(2);
+            exit(2);
+            break;
+        default:    // process process
+            printf("cpid : %d, pid : %d\n", cpid, getpid());
+            sleep(5);
+
+            while(waitpid(cpid, &status, 0)!=cpid) {
+                printf("parent process\n");
+                sleep(1);
+            }
+
+            if(WIFEXITED(status)) {
+                printf("exit code : %d\n", WEXITSTATUS(status));
+            } else if(WIFSIGNALED(status)) {
+                printf("killed by signal\n");
+            }
+
+            system("ps -l");
+            break;
+    }
+}
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <stdio.h>
+
+int main() {
+    struct rlimit rlim;
+
+    getrlimit(RLIMIT_NPROC, &rlim);
+    printf("max user process : %lu / %lu\n", rlim.rlim_cur, rlim.rlim_max);
+
+    getrlimit(RLIMIT_NOFILE, &rlim);
+    printf("file size : %u, / %lu\n", (int)rlim.rlim_cur, rlim.rlim_max);
+
+    getrlimit(RLIMIT_RSS, &rlim);
+    printf("file memory size : %lu / %lu\n", rlim.rlim_cur, rlim.rlim_max);
+
+    getrlimit(RLIMIT_CPU, &rlim);
+    if(rlim.rlim_cur == RLIM_INFINITY) {
+        printf("cpu time : UNLIMIT\n");
+    }
+    return (0);
+}
+#include <stdio.h>
+#include <stdlib.h>
