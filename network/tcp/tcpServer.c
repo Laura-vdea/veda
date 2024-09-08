@@ -54,8 +54,7 @@ int sockfd, new_fd;
    {
        sin_size = sizeof(struct sockaddr_in);
 
-       if((new_fd = accept(sockfd, (struct sockaddr *) &their_addr, &sin_size))
-== -1)
+       if((new_fd = accept(sockfd, (struct sockaddr *) &their_addr, &sin_size)) == -1)
        {
            perror("accept");
            continue;

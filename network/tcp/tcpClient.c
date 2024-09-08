@@ -46,8 +46,7 @@ int main(int argc, char *argv[])
 
    printf("[ %s ]\n", inet_ntoa(their_addr.sin_addr));
 
-   if(connect(sockfd, (struct sockaddr *)&their_addr, sizeof(struct sockaddr))
-== -1)
+   if(connect(sockfd, (struct sockaddr *)&their_addr, sizeof(struct sockaddr)) == -1)
    {
        perror("connect");
        exit(1);
